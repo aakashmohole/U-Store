@@ -27,7 +27,7 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-2zha4ymwpb+78-rdv$e*qmtu9-3_-c_6w&4qe&g%749c7mwya$'
+# SECRET_KEY = 'django-insecure-2zha4ymwpb+78-rdv$e*qmtu9-3_-c_6w&4qe&g%749c7mwya$'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -38,16 +38,13 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    # 'django.contrib.admin',
-    # 'django.contrib.auth',
-    # 'django.contrib.contenttypes',
-    # 'django.contrib.sessions',
-    # 'django.contrib.messages',
-    
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.contenttypes',  # Required by Django
-    'django.contrib.sessions',  # Required for user sessions
-    
+
     # Third-party packages
     'rest_framework',
     'corsheaders',
@@ -153,3 +150,11 @@ SIMPLE_JWT = {
     "SIGNING_KEY": os.getenv("SECRET_KEY"),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+AUTH_USER_MODEL = 'authentication.Users'
