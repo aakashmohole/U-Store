@@ -1,0 +1,3 @@
+EID = 4kjessy@gmail.com
+NAME = jessy
+PASS = jessy
