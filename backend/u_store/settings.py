@@ -15,6 +15,10 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 import dj_database_url  # For parsing database URL
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,6 +46,8 @@ INSTALLED_APPS = [
     # Third-party packages
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',  # For logout support
+    'corsheaders',  # Enable CORS support if needed
 
     # Custom apps
     'authentication',
@@ -51,6 +57,9 @@ INSTALLED_APPS = [
     'loyalty',
     'notifications',
     'adminpanel',
+    
+    
+    'django_filters',
 ]
 
 
@@ -78,10 +87,11 @@ CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be sent
 
 ROOT_URLCONF = 'u_store.urls'
 
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -93,6 +103,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = 'u_store.wsgi.application'
 
@@ -152,7 +163,12 @@ SIMPLE_JWT = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',# Allows cookie-based auth
+        'authentication.auth.CookieJWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Require authentication by default
+    ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
@@ -160,20 +176,38 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '10/min',  # 10 requests per minute for anonymous users
         'user': '100/hour',  # 100 requests per hour for authenticated users
-    }
+    },
+    
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,  # Show 10 products per page
 }
 
-# CSRF & CORS Setup
+# # CSRF & CORS Setup
 # CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
 # CSRF_COOKIE_HTTPONLY = True
 
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # Set to True in production
+CSRF_COOKIE_HTTPONLY = False    
+CSRF_COOKIE_SECURE = False
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # ✅ Correct format
+    "http://127.0.0.1:3000",  # ✅ If you're using this
+]
+
+
+
 # Debugging: Print values to check if they are loaded
-print("EMAIL_BACKEND:", os.getenv("EMAIL_BACKEND"))
-print("EMAIL_HOST:", os.getenv("EMAIL_HOST"))
-print("EMAIL_PORT:", os.getenv("EMAIL_PORT"))
-print("EMAIL_USE_TLS:", os.getenv("EMAIL_USE_TLS"))
-print("EMAIL_HOST_USER:", os.getenv("EMAIL_HOST_USER"))
-print("EMAIL_HOST_PASSWORD:", os.getenv("EMAIL_HOST_PASSWORD"))
+# print("EMAIL_BACKEND:", os.getenv("EMAIL_BACKEND"))
+# print("EMAIL_HOST:", os.getenv("EMAIL_HOST"))
+# print("EMAIL_PORT:", os.getenv("EMAIL_PORT"))
+# print("EMAIL_USE_TLS:", os.getenv("EMAIL_USE_TLS"))
+# print("EMAIL_HOST_USER:", os.getenv("EMAIL_HOST_USER"))
+# print("EMAIL_HOST_PASSWORD:", os.getenv("EMAIL_HOST_PASSWORD"))
 
 # Assign Email Settings
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND")
@@ -189,3 +223,11 @@ CACHES = {
         'LOCATION': 'redis://127.0.0.1:6379/1',
     }
 }
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
