@@ -1,7 +1,5 @@
-from django.shortcuts import render
-import cloudinary.uploader
 from django.core.cache import cache
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from .models import Product
@@ -9,61 +7,75 @@ from .serializers import ProductSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from .filters import ProductFilter
-from rest_framework.decorators import authentication_classes
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from authentication.views import CookieJWTAuthentication
 from rest_framework.response import Response
-# Custom throttle for sellers
-class SellerRateThrottle(UserRateThrottle):
-    rate = '20/min'  # Limit sellers to 10 requests per minute
+from authentication.views import CookieJWTAuthentication
+import cloudinary.uploader
 
-# ✅ List & Create Products (Only Sellers/Admins can add products)
-@authentication_classes([JWTAuthentication])
+# ✅ Custom throttle for sellers
+class SellerRateThrottle(UserRateThrottle):
+    rate = '20/min'  # Limit sellers to 20 requests per minute
+
+# ✅ Product List & Create (Sellers can add, Everyone can view)
 class ProductListCreateView(ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     authentication_classes = [CookieJWTAuthentication]
-    permission_classes = [AllowAny]
-    throttle_classes = [SellerRateThrottle]
+    permission_classes = [IsAuthenticated]  # ✅ Only authenticated users (sellers/admins)
+    throttle_classes = [SellerRateThrottle]  # ✅ Throttle only sellers
 
-    # ✅ Enable filtering, searching, and sorting
+    # ✅ Filtering, Searching, and Sorting
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = ProductFilter  # Use the custom filter class
-    search_fields = ['name', 'description']  # Search by name or description
-    ordering_fields = ['price', 'created_at']  # Allow sorting by price & date
-    
+    filterset_class = ProductFilter
+    search_fields = ['name', 'description']
+    ordering_fields = ['price', 'created_at']
 
     def get_queryset(self):
+        """ ✅ Cache products for faster performance """
         cached_products = cache.get("all_products")
         if cached_products:
-            return cached_products  # Return cached data
+            return cached_products  
 
         products = Product.objects.all()
-        cache.set("all_products", products, timeout=60*5)  # Cache for 5 mins
+        cache.set("all_products", products, timeout=60*5)  # Cache for 5 minutes
         return products
 
     def perform_create(self, serializer):
-        image = self.request.FILES.get('image', None)
+        """ ✅ Only sellers (users) can create products, and images are uploaded to Cloudinary """
+        user = self.request.user
+        if user.user_type != 'User':  # 'User' = Seller
+            return Response({"error": "Only sellers can add products"}, status=403)
 
+        image = self.request.FILES.get('image', None)
         if image:
             upload_result = cloudinary.uploader.upload(image, folder="UStore_Products")
-            serializer.save(image=upload_result['secure_url'])  # Save Cloudinary URL
-
+            serializer.save(image=upload_result['secure_url'], seller=user)
         else:
-            serializer.save()  # Save without an image
+            serializer.save(seller=user)
 
-
-# ✅ Retrieve, Update, Delete a Product (Only Sellers/Admins)
+# ✅ Retrieve, Update, Delete a Product (Only Admins)
 class ProductDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticated]  # ✅ Only admins (buyers) can manage products
 
     def perform_update(self, serializer):
-        image = self.request.FILES.get('image', None)
+        """ ✅ Only admins can update products, and images are uploaded to Cloudinary """
+        user = self.request.user
+        if user.user_type != 'Admin':  # 'Admin' = Buyer
+            return Response({"error": "Only admins can update products"}, status=403)
 
+        image = self.request.FILES.get('image', None)
         if image:
             upload_result = cloudinary.uploader.upload(image, folder="UStore_Products")
-            serializer.save(image=upload_result['secure_url'])  # Update with new image
+            serializer.save(image=upload_result['secure_url'])
         else:
-            serializer.save()  # Update other fields only
+            serializer.save()
+
+    def perform_destroy(self, instance):
+        """ ✅ Only admins can delete products """
+        user = self.request.user
+        if user.user_type != 'Admin':
+            return Response({"error": "Only admins can delete products"}, status=403)
+        instance.delete()
