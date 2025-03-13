@@ -51,21 +51,7 @@ class LogoutView(generics.GenericAPIView):
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         return response
-# class CookieJWTAuthentication(JWTAuthentication):
-#     def authenticate(self, request):
-#         token = request.COOKIES.get("access_token")  # ✅ Get token from cookies
-#         if not token:
-#             print("❌ No access token found in cookies")  # ✅ Debugging
-#             return None  # ✅ Must return None if no token found
 
-#         try:
-#             validated_token = self.get_validated_token(token)  # ✅ Decode token
-#             user = self.get_user(validated_token)  # ✅ Get user from token
-#             return (user, validated_token)  # ✅ Corrected return format
-#         except Exception as e:
-#             print(f"❌ Authentication failed: {e}")  # ✅ Debugging
-#             raise AuthenticationFailed("Invalid or expired token")  # ✅ Correct error message
-        
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]

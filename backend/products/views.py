@@ -20,43 +20,38 @@ class SellerRateThrottle(UserRateThrottle):
 # ✅ List & Create Products (Only Sellers/Admins can add products)
 @authentication_classes([JWTAuthentication])
 class ProductListCreateView(ListCreateAPIView):
-    # queryset = Product.objects.all()
-    # serializer_class = ProductSerializer
-    # authentication_classes = [CookieJWTAuthentication]
-    # permission_classes = [IsAuthenticated]
-    # throttle_classes = [SellerRateThrottle]
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [AllowAny]
+    throttle_classes = [SellerRateThrottle]
 
-    # # ✅ Enable filtering, searching, and sorting
-    # filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    # filterset_class = ProductFilter  # Use the custom filter class
-    # search_fields = ['name', 'description']  # Search by name or description
-    # ordering_fields = ['price', 'created_at']  # Allow sorting by price & date
+    # ✅ Enable filtering, searching, and sorting
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ProductFilter  # Use the custom filter class
+    search_fields = ['name', 'description']  # Search by name or description
+    ordering_fields = ['price', 'created_at']  # Allow sorting by price & date
     
 
-    # def get_queryset(self):
-    #     cached_products = cache.get("all_products")
-    #     if cached_products:
-    #         return cached_products  # Return cached data
-
-    #     products = Product.objects.all()
-    #     cache.set("all_products", products, timeout=60*5)  # Cache for 5 mins
-    #     return products
-
-    # def perform_create(self, serializer):
-    #     image = self.request.FILES.get('image', None)
-
-    #     if image:
-    #         upload_result = cloudinary.uploader.upload(image, folder="UStore_Products")
-    #         serializer.save(image=upload_result['secure_url'])  # Save Cloudinary URL
-
-    #     else:
-    #         serializer.save()  # Save without an image
-    authentication_classes = [CookieJWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    serializer_class = ProductSerializer
-
     def get_queryset(self):
-        return Product.objects.all()  # ✅ Fix: Use get_queryset
+        cached_products = cache.get("all_products")
+        if cached_products:
+            return cached_products  # Return cached data
+
+        products = Product.objects.all()
+        cache.set("all_products", products, timeout=60*5)  # Cache for 5 mins
+        return products
+
+    def perform_create(self, serializer):
+        image = self.request.FILES.get('image', None)
+
+        if image:
+            upload_result = cloudinary.uploader.upload(image, folder="UStore_Products")
+            serializer.save(image=upload_result['secure_url'])  # Save Cloudinary URL
+
+        else:
+            serializer.save()  # Save without an image
+
 
 # ✅ Retrieve, Update, Delete a Product (Only Sellers/Admins)
 class ProductDetailView(RetrieveUpdateDestroyAPIView):

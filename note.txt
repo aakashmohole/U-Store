@@ -1,3 +1,5 @@
 EID = 4kjessy@gmail.com
 NAME = jessy
 PASS = jessy
+
+docker start redis
