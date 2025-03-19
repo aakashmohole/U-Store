@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from products.models import Product
+from loyalty.models import LoyaltyPoints, LoyaltyTransaction
 # Create your models here.
 
 class Order(models.Model):
@@ -17,6 +18,22 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.status == "Delivered":
+            self.award_loyalty_points()
+    
+    def award_loyalty_points(self):
+        total_price = sum(item.price * item.quantity for item in self.items.all())
+        earned_points = total_price * 0.05
+        
+        loyalty_account, created = LoyaltyPoints.objects.get_or_create(user=self.user)
+        loyalty_account.points += earned_points
+        loyalty_account.save()
+        
+        LoyaltyTransaction.objects.create(self.user, points = earned_points, transaction_type="Earned")
+        
+        
     def __str__(self):
         return f"Order {self.id} - {self.status}"
     
