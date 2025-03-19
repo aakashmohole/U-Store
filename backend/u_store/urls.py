@@ -22,4 +22,5 @@ urlpatterns = [
     path('api/user/', include('authentication.urls')),  # ✅ Corrected
     path('api/', include('products.urls')),
     path('api/', include('orders.urls')),
+    path('api/loyalty/', include('loyalty.urls')),
 ]
